@@ -80,6 +80,15 @@ ARG KIND_VERSION=v0.20.0
 RUN curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" \
     && chmod +x /usr/local/bin/kind
 
+# Install AWS CLI v2
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
+    && unzip -q /tmp/awscliv2.zip -d /tmp \
+    && /tmp/aws/install \
+    && rm -rf /tmp/awscliv2.zip /tmp/aws
+
+# Install LocalStack CLI and awslocal wrapper
+RUN pip3 install --no-cache-dir --break-system-packages localstack awscli-local
+
 # Create necessary directories
 RUN mkdir -p /home/vscode/.kube /home/vscode/clusters /home/vscode/.crc \
     && chown -R vscode:vscode /home/vscode/.kube /home/vscode/clusters /home/vscode/.crc
