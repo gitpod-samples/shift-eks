@@ -1,0 +1,5 @@
+.eks-clusters/
+
+# Temporary binaries and validation scripts
+eksctl-anywhere
+validate-dockerfile.sh
