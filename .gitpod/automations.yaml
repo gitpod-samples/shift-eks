@@ -1,0 +1,39 @@
+services:
+  eks-anywhere:
+    name: EKS Anywhere
+    description: AWS EKS Anywhere cluster running on Docker provider
+    triggeredBy:
+      - postEnvironmentStart
+    commands:
+      start: bash .devcontainer/start-eks-anywhere.sh
+      ready: kubectl --context kind-eks-local-eks-a-cluster get nodes 2>/dev/null | grep -q "Ready"
+      stop: |
+        eksctl anywhere delete cluster eks-local --force 2>/dev/null || true
+        kind delete cluster --name eks-local-eks-a-cluster 2>/dev/null || true
+
+  eks-localstack:
+    name: EKS LocalStack
+    description: AWS EKS cluster via LocalStack Pro (requires LOCALSTACK_AUTH_TOKEN)
+    triggeredBy:
+      - manual
+    commands:
+      start: bash .devcontainer/start-eks-localstack.sh
+      ready: |
+        export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1
+        kubectl --context arn:aws:eks:us-east-1:000000000000:cluster/eks-localstack get nodes 2>/dev/null | grep -q "Ready"
+      stop: |
+        export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1
+        awslocal eks delete-cluster --name eks-localstack 2>/dev/null || true
+        docker stop localstack-main 2>/dev/null || true
+        docker rm localstack-main 2>/dev/null || true
+
+  openshift-okd:
+    name: OpenShift OKD
+    description: OpenShift-compatible cluster running on kind with OLM and OpenShift CRDs
+    triggeredBy:
+      - postEnvironmentStart
+    commands:
+      start: bash .devcontainer/start-openshift-okd.sh
+      ready: kubectl --context kind-okd-local get nodes 2>/dev/null | grep -q "Ready"
+      stop: |
+        kind delete cluster --name okd-local 2>/dev/null || true

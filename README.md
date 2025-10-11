@@ -1,15 +1,16 @@
 # shift-eks
 
-Multi-cluster Kubernetes development environment with OpenShift-compatible (OKD) and EKS Anywhere.
+Multi-cluster Kubernetes development environment with OpenShift-compatible (OKD), EKS Anywhere, and EKS LocalStack.
 
 ## Overview
 
-This DevContainer provides two Kubernetes clusters for development and testing:
+This DevContainer provides three Kubernetes cluster options for development and testing:
 
 1. **OKD (OpenShift-compatible)** - Community distribution of OpenShift with 100% API compatibility
 2. **EKS Anywhere** - AWS-curated Kubernetes distribution with Docker provider
+3. **EKS LocalStack** - AWS EKS via LocalStack Pro for local AWS development
 
-Both clusters start automatically when the DevContainer launches.
+OKD and EKS Anywhere start automatically when the DevContainer launches. EKS LocalStack can be started manually via Ona Automations.
 
 > **Note:** OKD provides full OpenShift API compatibility without requiring nested virtualization (KVM). It runs on kind (Kubernetes in Docker) with OpenShift components installed.
 
@@ -55,17 +56,47 @@ The clusters are automatically configured when you open this project in a DevCon
 
 - ✅ OKD cluster (OpenShift-compatible) running on kind
 - ✅ EKS Anywhere cluster running (Docker provider)
-- ✅ kubectl, oc, kind, and eksctl anywhere CLI tools installed
+- ✅ kubectl, oc, kind, aws, and eksctl anywhere CLI tools installed
 - ✅ Kubeconfig automatically configured
 
 **Note:** 
 - First-time OKD setup takes 3-5 minutes
 - EKS Anywhere cluster creation takes 10-15 minutes on first start
+- EKS LocalStack requires manual start and LOCALSTACK_AUTH_TOKEN environment variable
+
+## Ona Automations
+
+This project includes Ona Automations for managing the Kubernetes clusters as services:
+
+**Services:**
+- `eks-anywhere` - Starts automatically on environment start
+- `openshift-okd` - Starts automatically on environment start
+- `eks-localstack` - Manual start (requires LOCALSTACK_AUTH_TOKEN)
+
+**Managing Services:**
+```bash
+# List all services
+gitpod automations service list
+
+# Start a service manually
+gitpod automations service start eks-localstack
+
+# Stop a service
+gitpod automations service stop eks-localstack
+
+# View service logs
+gitpod automations service logs eks-anywhere
+```
+
+See `.gitpod/automations.yaml` for service definitions.
 
 ## Helper Scripts
 
 - **`cluster-manager.sh`** - Manage both clusters (start, stop, restart, switch)
 - **`verify-setup.sh`** - Verify all tools are installed correctly
+- **`.devcontainer/start-eks-anywhere.sh`** - Start EKS Anywhere cluster
+- **`.devcontainer/start-openshift-okd.sh`** - Start OKD cluster
+- **`.devcontainer/start-eks-localstack.sh`** - Start LocalStack EKS cluster
 
 ## Cluster Management
 
