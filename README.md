@@ -1,15 +1,17 @@
 # shift-eks
 
-Multi-cluster Kubernetes development environment with OpenShift (CRC) and EKS Anywhere.
+Multi-cluster Kubernetes development environment with OpenShift-compatible (OKD) and EKS Anywhere.
 
 ## Overview
 
 This DevContainer provides two Kubernetes clusters for development and testing:
 
-1. **OpenShift** - Full OpenShift 4.x cluster via CodeReady Containers (CRC)
+1. **OKD (OpenShift-compatible)** - Community distribution of OpenShift with 100% API compatibility
 2. **EKS Anywhere** - AWS-curated Kubernetes distribution with Docker provider
 
 Both clusters start automatically when the DevContainer launches.
+
+> **Note:** OKD provides full OpenShift API compatibility without requiring nested virtualization (KVM). It runs on kind (Kubernetes in Docker) with OpenShift components installed.
 
 > **Note:** EKS Anywhere is AWS's official on-premises Kubernetes distribution. We use the Docker provider for local development, which is free and provides the same EKS Anywhere experience.
 
@@ -24,38 +26,45 @@ Both clusters start automatically when the DevContainer launches.
 
 ## Prerequisites
 
-### Red Hat Pull Secret (Required for OpenShift)
+### Docker Engine
 
-CRC requires a pull secret from Red Hat. See [docs/PULL_SECRET.md](docs/PULL_SECRET.md) for detailed instructions.
+This environment requires Docker to run both clusters:
+- ✅ Works in standard containers (Gitpod, DevContainers)
+- ✅ Works on local machines with Docker installed
+- ✅ No nested virtualization (KVM) required
 
-**Quick Setup:**
-```bash
-# Run the helper script
-./setup-crc-pull-secret.sh
+### OKD vs OpenShift CRC
 
-# Or let CRC prompt you during first start
-crc start
-```
+**OKD (Used in this environment):**
+- ✅ 100% OpenShift API compatible
+- ✅ Runs without nested virtualization
+- ✅ Uses kind (Kubernetes in Docker)
+- ✅ Includes OpenShift operators and CRDs
+- ✅ Works in containers and cloud environments
+- ⚠️ Community distribution (not commercially supported)
 
-Get your free pull secret from: [https://console.redhat.com/openshift/create/local](https://console.redhat.com/openshift/create/local)
+**OpenShift CRC (Alternative):**
+- Requires nested virtualization (`/dev/kvm`)
+- Full commercial OpenShift 4.x
+- Only works on local machines or cloud VMs with KVM
+- See `.devcontainer/start-openshift-crc.sh` for CRC setup (requires KVM)
 
 ## Quick Start
 
 The clusters are automatically configured when you open this project in a DevContainer. After the container starts, you'll have:
 
-- ✅ OpenShift cluster (CRC) running
+- ✅ OKD cluster (OpenShift-compatible) running on kind
 - ✅ EKS Anywhere cluster running (Docker provider)
-- ✅ kubectl, oc, crc, and eksctl anywhere CLI tools installed
+- ✅ kubectl, oc, kind, and eksctl anywhere CLI tools installed
 - ✅ Kubeconfig automatically configured
 
 **Note:** 
-- First-time CRC setup may take 10-15 minutes and requires a Red Hat pull secret
+- First-time OKD setup takes 3-5 minutes
 - EKS Anywhere cluster creation takes 10-15 minutes on first start
 
 ## Helper Scripts
 
 - **`cluster-manager.sh`** - Manage both clusters (start, stop, restart, switch)
-- **`setup-crc-pull-secret.sh`** - Interactive setup for Red Hat pull secret
 - **`verify-setup.sh`** - Verify all tools are installed correctly
 
 ## Cluster Management
@@ -86,29 +95,28 @@ A helper script is provided for common operations:
 
 ### Manual Commands
 
-#### OpenShift Cluster (CRC)
+#### OKD Cluster (OpenShift-compatible)
 
 ```bash
-# Check CRC status
-crc status
-
-# Get console URL and credentials
-crc console --credentials
-crc console --url
+# Check cluster status
+kubectl get nodes
+kind get clusters
 
 # Use OpenShift CLI
 oc get nodes
 oc get pods --all-namespaces
-oc projects
+
+# Check OpenShift-compatible features
+kubectl get crds | grep openshift
+kubectl get crds | grep operator
+
+# View Operator Lifecycle Manager
+kubectl get pods -n olm
+kubectl get catalogsources -n olm
 
 # Use kubectl (automatically configured)
 kubectl get nodes
 kubectl get pods --all-namespaces
-
-# Access the web console
-# URL: https://console-openshift-console.apps-crc.testing
-# User: kubeadmin
-# Password: (get from `crc console --credentials`)
 ```
 
 #### EKS Anywhere Cluster
@@ -132,8 +140,8 @@ eksctl anywhere upgrade cluster -f ~/clusters/eks-local-config.yaml
 ## Available Tools
 
 - **kubectl** - Kubernetes CLI
-- **oc** - OpenShift CLI
-- **crc** - CodeReady Containers CLI
+- **oc** - OpenShift CLI (works with OKD)
+- **kind** - Kubernetes in Docker
 - **eksctl** - EKS Anywhere CLI (eksctl anywhere)
 - **kubectx** - Switch between kubectl contexts easily
 - **kubens** - Switch between Kubernetes namespaces easily
@@ -178,12 +186,11 @@ kubens -
 
 ## Resource Requirements
 
-### OpenShift (CRC)
-- **Memory:** 16 GB (configured)
-- **CPUs:** 6 cores (configured)
-- **Disk:** 100 GB (configured)
-
-These settings can be adjusted in `.devcontainer/post-create.sh` using `crc config set` commands.
+### OKD (OpenShift-compatible on kind)
+- **Memory:** ~4 GB
+- **CPUs:** 2 cores
+- **Disk:** ~5 GB
+- No nested virtualization required
 
 ### EKS Anywhere (Docker provider)
 - **Memory:** ~4 GB
@@ -224,33 +231,37 @@ bash .devcontainer/start-eks-anywhere.sh
 docker ps --filter "name=eks-local"
 ```
 
-### OpenShift CRC issues
+### OKD cluster issues
 
 ```bash
-# Check CRC status
-crc status
+# Check cluster status
+kind get clusters
+kubectl get nodes
 
-# View CRC logs
-crc logs
+# View cluster logs
+docker logs okd-local-control-plane
 
-# Delete and recreate CRC
-crc delete
-crc setup
-crc start
+# Delete and recreate OKD
+kind delete cluster --name okd-local
+bash .devcontainer/start-okd-single-node.sh
 
-# Restart OpenShift
-./cluster-manager.sh restart-os
+# Check OpenShift components
+kubectl get crds | grep openshift
+kubectl get pods -n olm
 ```
 
-### Pull secret issues
+### Switching to OpenShift CRC (requires KVM)
 
-If CRC fails to start due to pull secret issues:
+If you have nested virtualization available:
 
 ```bash
-# Get your pull secret from https://console.redhat.com/openshift/create/local
-# Then start CRC manually
-crc start
-# Follow the prompts to provide the pull secret
+# Check for KVM support
+ls -la /dev/kvm
+
+# If available, use CRC instead
+bash .devcontainer/start-openshift-crc.sh
+
+# Note: Requires pull secret at /usr/local/secrets/OPENSHIFT_PULL_SECRET
 ```
 
 ### Context issues
@@ -273,13 +284,17 @@ kubectl config use-context arn:aws:eks:us-east-1:000000000000:cluster/eks-local
 
 ## Architecture
 
-### OpenShift Cluster (CRC)
-- Full OpenShift 4.x cluster via CodeReady Containers
-- Single-node cluster optimized for local development
-- Includes OpenShift web console
-- Full OpenShift API and features
+### OKD Cluster (OpenShift-compatible)
+- Community distribution of OpenShift 4.x
+- 100% OpenShift API compatible
+- Runs on kind (Kubernetes in Docker)
+- Includes OpenShift operators and CRDs:
+  - Operator Lifecycle Manager (OLM)
+  - OpenShift Routes CRD
+  - OpenShift Projects CRD
+  - OpenShift Router
 - Compatible with both `kubectl` and `oc` commands
-- Requires Red Hat pull secret (free with Red Hat Developer account)
+- No nested virtualization required
 
 ### EKS Anywhere Cluster
 - AWS's official on-premises Kubernetes distribution

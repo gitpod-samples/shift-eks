@@ -75,6 +75,11 @@ RUN curl -Lo /usr/local/bin/kubectx https://raw.githubusercontent.com/ahmetb/kub
     && curl -Lo /usr/local/bin/kubens https://raw.githubusercontent.com/ahmetb/kubectx/master/kubens \
     && chmod +x /usr/local/bin/kubectx /usr/local/bin/kubens
 
+# Install kind (Kubernetes in Docker) for OKD
+ARG KIND_VERSION=v0.20.0
+RUN curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" \
+    && chmod +x /usr/local/bin/kind
+
 # Create necessary directories
 RUN mkdir -p /home/vscode/.kube /home/vscode/clusters /home/vscode/.crc \
     && chown -R vscode:vscode /home/vscode/.kube /home/vscode/clusters /home/vscode/.crc
