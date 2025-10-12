@@ -1,4 +1,9 @@
 .eks-clusters/
+.clusters/
+
+# Kubeconfig files
+*.kubeconfig
+**/kubeconfig
 
 # Temporary binaries and validation scripts
 eksctl-anywhere

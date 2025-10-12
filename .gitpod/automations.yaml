@@ -6,10 +6,22 @@ services:
       - postEnvironmentStart
     commands:
       start: bash .devcontainer/start-eks-anywhere.sh
-      ready: kubectl --context kind-eks-local-eks-a-cluster get nodes 2>/dev/null | grep -q "Ready"
+      ready: |
+        # Check if cluster containers are running
+        docker ps --format '{{.Names}}' | grep -q "^eks-local-eks-a-cluster-control-plane$" || exit 1
+        # Try management cluster kubeconfig first, fall back to bootstrap
+        if [ -f /workspaces/shift-eks/.eks-clusters/eks-local/eks-local-eks-a-cluster.kubeconfig ]; then
+          export KUBECONFIG=/workspaces/shift-eks/.eks-clusters/eks-local/eks-local-eks-a-cluster.kubeconfig
+        elif [ -f /workspaces/shift-eks/.eks-clusters/eks-local/generated/eks-local.kind.kubeconfig ]; then
+          export KUBECONFIG=/workspaces/shift-eks/.eks-clusters/eks-local/generated/eks-local.kind.kubeconfig
+        else
+          exit 1
+        fi
+        kubectl get nodes 2>/dev/null | grep -q "Ready"
       stop: |
-        eksctl anywhere delete cluster eks-local --force 2>/dev/null || true
-        kind delete cluster --name eks-local-eks-a-cluster 2>/dev/null || true
+        eksctl anywhere delete cluster eks-local 2>/dev/null || true
+        docker stop $(docker ps -q --filter "name=eks-local") 2>/dev/null || true
+        docker rm $(docker ps -aq --filter "name=eks-local") 2>/dev/null || true
 
   eks-localstack:
     name: EKS LocalStack

@@ -210,4 +210,11 @@ echo "   oc new-project myproject"
 echo "   oc get routes"
 echo ""
 
-return 0 2>/dev/null || exit 0
+# Keep the service running by monitoring the kind container
+echo "🔄 Monitoring OKD cluster..."
+while docker ps --format '{{.Names}}' | grep -q "^okd-local-control-plane$"; do
+    sleep 10
+done
+
+echo "❌ OKD cluster stopped"
+return 1 2>/dev/null || exit 1

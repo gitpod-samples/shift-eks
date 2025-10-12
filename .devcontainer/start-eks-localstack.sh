@@ -147,21 +147,18 @@ else
     done
 fi
 
-# Update kubeconfig
-echo "🔧 Updating kubeconfig..."
-awslocal eks update-kubeconfig \
-    --name ${EKS_CLUSTER_NAME} \
-    --region ${AWS_REGION}
+# Extract kubeconfig from k3d inside LocalStack
+echo "🔧 Extracting kubeconfig from k3d cluster..."
+mkdir -p "${CLUSTERS_DIR}/eks-localstack"
+docker exec ${LOCALSTACK_CONTAINER} /var/lib/localstack/lib/k3d/v5.8.3/k3d-linux-amd64 kubeconfig write eks-localstack -o - > "${KUBECONFIG_PATH}"
 
 # Get the actual Kubernetes API endpoint
 K8S_ENDPOINT=$(awslocal eks describe-cluster --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION} --query 'cluster.endpoint' --output text)
 echo "   Kubernetes API: ${K8S_ENDPOINT}"
+echo "   Kubeconfig: ${KUBECONFIG_PATH}"
 
-# Fix kubeconfig to use the correct endpoint
-echo "🔧 Configuring cluster access..."
-kubectl config set-cluster arn:aws:eks:${AWS_REGION}:000000000000:cluster/${EKS_CLUSTER_NAME} \
-    --server=${K8S_ENDPOINT} \
-    --insecure-skip-tls-verify=true
+# Set KUBECONFIG environment variable
+export KUBECONFIG="${KUBECONFIG_PATH}"
 
 echo ""
 echo "✅ LocalStack EKS cluster ready"
@@ -185,4 +182,11 @@ echo "   docker logs ${LOCALSTACK_CONTAINER}  # View LocalStack logs"
 echo "   awslocal eks list-clusters           # List all clusters"
 echo ""
 
-return 0 2>/dev/null || exit 0
+# Keep the service running by monitoring the LocalStack container
+echo "🔄 Monitoring LocalStack container..."
+while docker ps --format '{{.Names}}' | grep -q "^${LOCALSTACK_CONTAINER}$"; do
+    sleep 10
+done
+
+echo "❌ LocalStack container stopped"
+return 1 2>/dev/null || exit 1
