@@ -18,14 +18,22 @@ if kind get clusters 2>/dev/null | grep -q "^${OKD_CLUSTER}$"; then
     # Check if it's running
     if docker ps --format '{{.Names}}' | grep -q "${OKD_CLUSTER}-control-plane"; then
         echo "✅ OKD cluster is running"
-        kubectl config use-context "kind-${OKD_CLUSTER}"
-        return 0 2>/dev/null || exit 0
+        # Rename context if needed
+        if kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
+            kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
+        fi
+        kubectl config use-context "okd" 2>/dev/null || true
+        exit 0
     else
         echo "🔄 Starting existing OKD cluster..."
         docker start "${OKD_CLUSTER}-control-plane"
         sleep 10
-        kubectl config use-context "kind-${OKD_CLUSTER}"
-        return 0 2>/dev/null || exit 0
+        # Rename context if needed
+        if kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
+            kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
+        fi
+        kubectl config use-context "okd" 2>/dev/null || true
+        exit 0
     fi
 fi
 
@@ -197,6 +205,9 @@ echo "   kubectl get nodes"
 echo "   kubectl get pods -A"
 echo "   kubectl get crds | grep openshift"
 echo ""
+# Rename context to simple name
+kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
+
 echo "📚 OpenShift-compatible features:"
 echo "   • Operator Lifecycle Manager (OLM)"
 echo "   • OpenShift Routes CRD"
@@ -205,6 +216,7 @@ echo "   • OpenShift Router"
 echo "   • Compatible with 'oc' CLI"
 echo ""
 echo "💡 To use 'oc' CLI:"
+echo "   kubectl config use-context okd"
 echo "   oc get nodes"
 echo "   oc new-project myproject"
 echo "   oc get routes"
@@ -217,4 +229,4 @@ while docker ps --format '{{.Names}}' | grep -q "^okd-local-control-plane$"; do
 done
 
 echo "❌ OKD cluster stopped"
-return 1 2>/dev/null || exit 1
+exit 1

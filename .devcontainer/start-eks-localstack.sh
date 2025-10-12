@@ -16,13 +16,10 @@ if [ -z "$LOCALSTACK_AUTH_TOKEN" ]; then
     echo "❌ LOCALSTACK_AUTH_TOKEN environment variable not set"
     echo ""
     echo "📋 LocalStack EKS requires Pro or Ultimate plan"
+    echo "   Get your auth token from: https://app.localstack.cloud/workspace/auth-token"
+    echo "   Then set: export LOCALSTACK_AUTH_TOKEN=your-token"
     echo ""
-    echo "To set up:"
-    echo "  1. Get your auth token from: https://app.localstack.cloud/workspace/auth-token"
-    echo "  2. Set environment variable: export LOCALSTACK_AUTH_TOKEN=your-token"
-    echo "  3. Or add to your shell profile (~/.bashrc, ~/.zshrc)"
-    echo ""
-    return 1 2>/dev/null || exit 1
+    exit 1
 fi
 
 # Check if LocalStack container is already running
@@ -63,7 +60,7 @@ for i in {1..60}; do
     if [ $i -eq 60 ]; then
         echo "❌ Timeout waiting for LocalStack to be ready"
         echo "   Check logs: docker logs ${LOCALSTACK_CONTAINER}"
-        return 1 2>/dev/null || exit 1
+        exit 1
     fi
     sleep 2
 done
@@ -161,6 +158,9 @@ echo "   Kubeconfig: ${KUBECONFIG_PATH}"
 # Set KUBECONFIG environment variable
 export KUBECONFIG="${KUBECONFIG_PATH}"
 
+# Rename context to simple name
+KUBECONFIG="${KUBECONFIG_PATH}" kubectl config rename-context "k3d-eks-localstack" "eks-localstack" 2>/dev/null || true
+
 echo ""
 echo "✅ LocalStack EKS cluster ready"
 echo "   Cluster: ${EKS_CLUSTER_NAME}"
@@ -168,9 +168,10 @@ echo "   Region: ${AWS_REGION}"
 echo "   Endpoint: http://localhost:4566"
 echo ""
 echo "🔍 Verify with:"
+echo "   export KUBECONFIG=${KUBECONFIG_PATH}"
+echo "   kubectl config use-context eks-localstack"
 echo "   kubectl get nodes"
 echo "   awslocal eks describe-cluster --name ${EKS_CLUSTER_NAME}"
-echo "   kubectl cluster-info"
 echo ""
 echo "📚 LocalStack EKS features:"
 echo "   • Full EKS API compatibility"
@@ -190,4 +191,4 @@ while docker ps --format '{{.Names}}' | grep -q "^${LOCALSTACK_CONTAINER}$"; do
 done
 
 echo "❌ LocalStack container stopped"
-return 1 2>/dev/null || exit 1
+exit 1

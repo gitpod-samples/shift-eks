@@ -26,6 +26,14 @@ if docker ps --format '{{.Names}}' | grep -q "^${CLUSTER_NAME}-eks-a-cluster-con
     # Check if cluster is accessible
     if [ -n "$KUBECONFIG" ] && kubectl get nodes 2>/dev/null | grep -q "Ready"; then
         echo "✅ Cluster is running and healthy"
+        
+        # Rename context to simple name if needed
+        CURRENT_CONTEXT=$(kubectl config current-context 2>/dev/null || echo "")
+        if [ -n "$CURRENT_CONTEXT" ] && [ "$CURRENT_CONTEXT" != "eks-anywhere" ]; then
+            kubectl config rename-context "$CURRENT_CONTEXT" "eks-anywhere" 2>/dev/null || true
+            echo "   Context renamed to: eks-anywhere"
+        fi
+        
         echo ""
         echo "🔄 Monitoring EKS Anywhere cluster..."
         while docker ps --format '{{.Names}}' | grep -q "^${CLUSTER_NAME}-eks-a-cluster-control-plane$"; do
@@ -140,22 +148,19 @@ done
 
 echo "✅ EKS Anywhere cluster is ready"
 
-# Determine which kubeconfig to use
-if [ -f "$KUBECONFIG_PATH" ]; then
-    export KUBECONFIG="$KUBECONFIG_PATH"
-    echo "✅ Using management cluster kubeconfig: $KUBECONFIG_PATH"
-elif [ -f "$BOOTSTRAP_KUBECONFIG" ]; then
+# Use bootstrap kubeconfig (management kubeconfig can be corrupted)
+if [ -f "$BOOTSTRAP_KUBECONFIG" ]; then
     export KUBECONFIG="$BOOTSTRAP_KUBECONFIG"
     echo "✅ Using bootstrap cluster kubeconfig: $BOOTSTRAP_KUBECONFIG"
-    # Copy to expected location for consistency
-    mkdir -p "$(dirname "$KUBECONFIG_PATH")"
-    cp "$BOOTSTRAP_KUBECONFIG" "$KUBECONFIG_PATH"
-    export KUBECONFIG="$KUBECONFIG_PATH"
-    echo "   Copied to: $KUBECONFIG_PATH"
 else
-    echo "⚠️  No kubeconfig found"
-    echo "   Looking for kubeconfig files..."
-    find "${CLUSTERS_DIR}/${CLUSTER_NAME}" -name "*.kubeconfig" 2>/dev/null || true
+    echo "❌ Bootstrap kubeconfig not found: $BOOTSTRAP_KUBECONFIG"
+    exit 1
+fi
+
+# Rename context to simple name
+CURRENT_CONTEXT=$(kubectl config current-context 2>/dev/null || echo "")
+if [ -n "$CURRENT_CONTEXT" ] && [ "$CURRENT_CONTEXT" != "eks-anywhere" ]; then
+    kubectl config rename-context "$CURRENT_CONTEXT" "eks-anywhere" 2>/dev/null || true
 fi
 
 # Test cluster access
@@ -169,14 +174,15 @@ else
 fi
 
 echo ""
+
 echo "✅ EKS Anywhere cluster setup complete"
 echo "   Cluster: $CLUSTER_NAME"
 echo "   Provider: Docker (local development)"
 echo "   Kubeconfig: $KUBECONFIG"
-echo "   Context: $(kubectl config current-context 2>/dev/null || echo 'unknown')"
 echo ""
 echo "📋 Quick commands:"
 echo "   export KUBECONFIG=$KUBECONFIG"
+echo "   kubectl config use-context eks-anywhere"
 echo "   kubectl get nodes"
 echo "   kubectl get pods -A"
 echo "   eksctl anywhere get clusters"
