@@ -1,0 +1,70 @@
+{{- if .Values.template.enabled }}
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: {{ include "task-manager.fullname" . }}-template
+  labels:
+    {{- include "task-manager.labels" . | nindent 4 }}
+  annotations:
+    description: "OpenShift Task Manager Application Template"
+    tags: "task-manager,openshift,demo"
+    iconClass: "icon-python"
+objects:
+  - apiVersion: apps.openshift.io/v1
+    kind: DeploymentConfig
+    metadata:
+      name: ${{ "{{" }}APP_NAME{{ "}}" }}
+      labels:
+        app: ${{ "{{" }}APP_NAME{{ "}}" }}
+    spec:
+      replicas: ${{ "{{" }}REPLICA_COUNT{{ "}}" }}
+      selector:
+        app: ${{ "{{" }}APP_NAME{{ "}}" }}
+      template:
+        metadata:
+          labels:
+            app: ${{ "{{" }}APP_NAME{{ "}}" }}
+        spec:
+          containers:
+            - name: task-manager
+              image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+              ports:
+                - containerPort: 8080
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${{ "{{" }}APP_NAME{{ "}}" }}
+      labels:
+        app: ${{ "{{" }}APP_NAME{{ "}}" }}
+    spec:
+      ports:
+        - port: 8080
+          targetPort: 8080
+      selector:
+        app: ${{ "{{" }}APP_NAME{{ "}}" }}
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      name: ${{ "{{" }}APP_NAME{{ "}}" }}
+      labels:
+        app: ${{ "{{" }}APP_NAME{{ "}}" }}
+    spec:
+      to:
+        kind: Service
+        name: ${{ "{{" }}APP_NAME{{ "}}" }}
+      port:
+        targetPort: 8080
+      tls:
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect
+parameters:
+  {{- range .Values.template.parameters }}
+  - name: {{ .name }}
+    displayName: {{ .displayName | quote }}
+    description: {{ .description | quote }}
+    value: {{ .value | quote }}
+    required: {{ .required }}
+  {{- end }}
+{{- end }}

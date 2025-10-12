@@ -1,0 +1,66 @@
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: task-manager-dc
+  namespace: task-manager
+  labels:
+    app: task-manager
+    deployment-type: openshift
+spec:
+  replicas: 1
+  selector:
+    app: task-manager
+    deployment-type: openshift
+  template:
+    metadata:
+      labels:
+        app: task-manager
+        deployment-type: openshift
+    spec:
+      serviceAccountName: task-manager
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: task-manager
+          image: task-manager:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1001
+  triggers:
+    - type: ConfigChange
+  strategy:
+    type: Rolling
+    rollingParams:
+      updatePeriodSeconds: 1
+      intervalSeconds: 1
+      timeoutSeconds: 600
+      maxUnavailable: 25%
+      maxSurge: 25%

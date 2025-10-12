@@ -1,0 +1,19 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: task-manager
+  namespace: task-manager
+  labels:
+    app: task-manager
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: task-manager:latest
+      importPolicy:
+        scheduled: true
+      referencePolicy:
+        type: Local

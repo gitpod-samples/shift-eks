@@ -1,0 +1,195 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: task-manager-template
+  namespace: task-manager
+  labels:
+    app: task-manager
+  annotations:
+    description: "OpenShift Task Manager Application Template"
+    tags: "task-manager,openshift,demo,python,flask"
+    iconClass: "icon-python"
+    openshift.io/display-name: "Task Manager"
+    openshift.io/documentation-url: "https://github.com/example/task-manager"
+    openshift.io/long-description: "This template deploys a Task Manager application with OpenShift-specific features"
+    openshift.io/provider-display-name: "OpenShift Demo"
+    openshift.io/support-url: "https://github.com/example/task-manager/issues"
+message: |-
+  The following service(s) have been created in your project: ${APP_NAME}.
+  
+  Application URL: https://${APP_NAME}-${NAMESPACE}.apps.example.com
+  
+  For more information about using this template, see https://github.com/example/task-manager
+objects:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+  
+  - apiVersion: apps.openshift.io/v1
+    kind: DeploymentConfig
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      replicas: ${{REPLICA_COUNT}}
+      selector:
+        app: ${APP_NAME}
+      template:
+        metadata:
+          labels:
+            app: ${APP_NAME}
+        spec:
+          serviceAccountName: ${APP_NAME}
+          containers:
+            - name: task-manager
+              image: ${IMAGE_NAME}:${IMAGE_TAG}
+              ports:
+                - containerPort: 8080
+                  protocol: TCP
+              livenessProbe:
+                httpGet:
+                  path: /health
+                  port: 8080
+                initialDelaySeconds: 30
+                periodSeconds: 10
+              readinessProbe:
+                httpGet:
+                  path: /health
+                  port: 8080
+                initialDelaySeconds: 10
+                periodSeconds: 5
+              resources:
+                limits:
+                  cpu: ${CPU_LIMIT}
+                  memory: ${MEMORY_LIMIT}
+                requests:
+                  cpu: ${CPU_REQUEST}
+                  memory: ${MEMORY_REQUEST}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                runAsNonRoot: true
+      triggers:
+        - type: ConfigChange
+        - type: ImageChange
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - task-manager
+            from:
+              kind: ImageStreamTag
+              name: ${APP_NAME}:${IMAGE_TAG}
+      strategy:
+        type: Rolling
+  
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      ports:
+        - port: 8080
+          targetPort: 8080
+          protocol: TCP
+          name: http
+      selector:
+        app: ${APP_NAME}
+  
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      to:
+        kind: Service
+        name: ${APP_NAME}
+      port:
+        targetPort: http
+      tls:
+        termination: ${TLS_TERMINATION}
+        insecureEdgeTerminationPolicy: Redirect
+  
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      lookupPolicy:
+        local: true
+
+parameters:
+  - name: APP_NAME
+    displayName: "Application Name"
+    description: "The name of the application"
+    value: "task-manager"
+    required: true
+  
+  - name: NAMESPACE
+    displayName: "Namespace"
+    description: "The OpenShift namespace/project"
+    value: "task-manager"
+    required: true
+  
+  - name: IMAGE_NAME
+    displayName: "Image Name"
+    description: "The container image name"
+    value: "task-manager"
+    required: true
+  
+  - name: IMAGE_TAG
+    displayName: "Image Tag"
+    description: "The container image tag"
+    value: "latest"
+    required: true
+  
+  - name: REPLICA_COUNT
+    displayName: "Replica Count"
+    description: "Number of replicas to deploy"
+    value: "2"
+    required: true
+  
+  - name: CPU_REQUEST
+    displayName: "CPU Request"
+    description: "Minimum CPU allocation"
+    value: "100m"
+    required: true
+  
+  - name: CPU_LIMIT
+    displayName: "CPU Limit"
+    description: "Maximum CPU allocation"
+    value: "500m"
+    required: true
+  
+  - name: MEMORY_REQUEST
+    displayName: "Memory Request"
+    description: "Minimum memory allocation"
+    value: "128Mi"
+    required: true
+  
+  - name: MEMORY_LIMIT
+    displayName: "Memory Limit"
+    description: "Maximum memory allocation"
+    value: "512Mi"
+    required: true
+  
+  - name: TLS_TERMINATION
+    displayName: "TLS Termination"
+    description: "TLS termination type (edge, passthrough, reencrypt)"
+    value: "edge"
+    required: true
+
+labels:
+  template: task-manager-template
+  app: task-manager

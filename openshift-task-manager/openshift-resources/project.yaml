@@ -1,0 +1,11 @@
+apiVersion: project.openshift.io/v1
+kind: Project
+metadata:
+  name: task-manager
+  annotations:
+    openshift.io/description: "Task Manager application demonstrating OpenShift-specific features"
+    openshift.io/display-name: "Task Manager"
+    openshift.io/requester: "system:admin"
+  labels:
+    app: task-manager
+    environment: demo

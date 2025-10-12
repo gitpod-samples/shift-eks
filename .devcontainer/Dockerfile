@@ -91,4 +91,5 @@ RUN pip3 install --no-cache-dir --break-system-packages localstack awscli-local
 
 # Create necessary directories
 RUN mkdir -p /home/vscode/.kube /home/vscode/clusters /home/vscode/.crc \
-    && chown -R vscode:vscode /home/vscode/.kube /home/vscode/clusters /home/vscode/.crc
+    && chown -R vscode:vscode /home/vscode/.kube /home/vscode/clusters /home/vscode/.crc \
+    && chmod 1777 /tmp

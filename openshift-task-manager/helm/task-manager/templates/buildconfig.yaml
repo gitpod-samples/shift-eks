@@ -1,0 +1,26 @@
+{{- if .Values.openshift.useBuildConfig }}
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: {{ include "task-manager.fullname" . }}
+  labels:
+    {{- include "task-manager.labels" . | nindent 4 }}
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: {{ include "task-manager.fullname" . }}:{{ .Values.image.tag }}
+  source:
+    type: Git
+    git:
+      uri: {{ .Values.openshift.buildConfig.sourceUrl }}
+      ref: {{ .Values.openshift.buildConfig.sourceRef }}
+    contextDir: "/"
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+{{- end }}

@@ -1,0 +1,38 @@
+{{- if .Values.openshift.scc.enabled }}
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: {{ .Values.openshift.scc.name }}
+  labels:
+    {{- include "task-manager.labels" . | nindent 4 }}
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: {{ .Values.openshift.scc.allowPrivilegedContainer }}
+allowPrivilegeEscalation: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+requiredDropCapabilities:
+  - ALL
+fsGroup:
+  type: {{ .Values.openshift.scc.fsGroup.type }}
+readOnlyRootFilesystem: false
+runAsUser:
+  type: {{ .Values.openshift.scc.runAsUser.type }}
+  {{- if .Values.openshift.scc.runAsUser.uidRangeMin }}
+  uidRangeMin: {{ .Values.openshift.scc.runAsUser.uidRangeMin }}
+  {{- end }}
+  {{- if .Values.openshift.scc.runAsUser.uidRangeMax }}
+  uidRangeMax: {{ .Values.openshift.scc.runAsUser.uidRangeMax }}
+  {{- end }}
+seLinuxContext:
+  type: {{ .Values.openshift.scc.seLinuxContext.type }}
+supplementalGroups:
+  type: {{ .Values.openshift.scc.supplementalGroups.type }}
+volumes:
+  {{- toYaml .Values.openshift.scc.volumes | nindent 2 }}
+users:
+  - system:serviceaccount:{{ .Release.Namespace }}:{{ include "task-manager.fullname" . }}
+{{- end }}

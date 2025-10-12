@@ -1,0 +1,89 @@
+replicaCount: 2
+
+image:
+  repository: task-manager
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+route:
+  enabled: true
+  host: ""
+  tls:
+    enabled: true
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+# OpenShift-specific settings
+openshift:
+  # Use DeploymentConfig instead of Deployment
+  useDeploymentConfig: false
+  
+  # Use ImageStream
+  useImageStream: false
+  
+  # Use BuildConfig for S2I
+  useBuildConfig: false
+  buildConfig:
+    sourceUrl: "https://github.com/example/task-manager.git"
+    sourceRef: "main"
+    strategy: "docker"
+  
+  # Custom SecurityContextConstraints
+  scc:
+    enabled: false
+    name: "task-manager-scc"
+    allowPrivilegedContainer: false
+    runAsUser:
+      type: MustRunAsRange
+      uidRangeMin: 1000
+      uidRangeMax: 2000
+    seLinuxContext:
+      type: MustRunAs
+    fsGroup:
+      type: MustRunAs
+    supplementalGroups:
+      type: RunAsAny
+    volumes:
+      - configMap
+      - downwardAPI
+      - emptyDir
+      - persistentVolumeClaim
+      - projected
+      - secret
+
+# Template parameters for OpenShift Template
+template:
+  enabled: false
+  parameters:
+    - name: APP_NAME
+      displayName: "Application Name"
+      description: "The name of the application"
+      value: "task-manager"
+      required: true
+    - name: REPLICA_COUNT
+      displayName: "Replica Count"
+      description: "Number of replicas to deploy"
+      value: "2"
+      required: true

@@ -1,0 +1,26 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: task-manager
+  namespace: task-manager
+  labels:
+    app: task-manager
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: task-manager:latest
+  source:
+    type: Git
+    git:
+      uri: https://github.com/example/task-manager.git
+      ref: main
+    contextDir: /
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+  runPolicy: Serial
