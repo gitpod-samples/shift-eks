@@ -8,6 +8,8 @@ echo ""
 LOCALSTACK_CONTAINER="localstack-main"
 EKS_CLUSTER_NAME="eks-localstack"
 AWS_REGION="us-east-1"
+CLUSTERS_DIR="/workspaces/shift-eks/.eks-clusters"
+KUBECONFIG_PATH="${CLUSTERS_DIR}/eks-localstack/kubeconfig"
 
 # Check for LocalStack auth token
 if [ -z "$LOCALSTACK_AUTH_TOKEN" ]; then
@@ -39,7 +41,6 @@ else
         docker run -d \
             --name ${LOCALSTACK_CONTAINER} \
             -p 4566:4566 \
-            -p 4510-4559:4510-4559 \
             -e LOCALSTACK_AUTH_TOKEN="${LOCALSTACK_AUTH_TOKEN}" \
             -e DEBUG=1 \
             -e SERVICES=eks,ec2,iam,sts \

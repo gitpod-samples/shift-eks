@@ -9,14 +9,9 @@ services:
       ready: |
         # Check if cluster containers are running
         docker ps --format '{{.Names}}' | grep -q "^eks-local-eks-a-cluster-control-plane$" || exit 1
-        # Try management cluster kubeconfig first, fall back to bootstrap
-        if [ -f /workspaces/shift-eks/.eks-clusters/eks-local/eks-local-eks-a-cluster.kubeconfig ]; then
-          export KUBECONFIG=/workspaces/shift-eks/.eks-clusters/eks-local/eks-local-eks-a-cluster.kubeconfig
-        elif [ -f /workspaces/shift-eks/.eks-clusters/eks-local/generated/eks-local.kind.kubeconfig ]; then
-          export KUBECONFIG=/workspaces/shift-eks/.eks-clusters/eks-local/generated/eks-local.kind.kubeconfig
-        else
-          exit 1
-        fi
+        # Use bootstrap kubeconfig (management kubeconfig can be corrupted)
+        export KUBECONFIG=/workspaces/shift-eks/.eks-clusters/eks-local/generated/eks-local.kind.kubeconfig
+        [ -f "$KUBECONFIG" ] || exit 1
         kubectl get nodes 2>/dev/null | grep -q "Ready"
       stop: |
         eksctl anywhere delete cluster eks-local 2>/dev/null || true
@@ -31,8 +26,8 @@ services:
     commands:
       start: bash .devcontainer/start-eks-localstack.sh
       ready: |
-        export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1
-        kubectl --context arn:aws:eks:us-east-1:000000000000:cluster/eks-localstack get nodes 2>/dev/null | grep -q "Ready"
+        export KUBECONFIG=/workspaces/shift-eks/.eks-clusters/eks-localstack/kubeconfig
+        kubectl --context k3d-eks-localstack get nodes 2>/dev/null | grep -q "Ready"
       stop: |
         export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1
         awslocal eks delete-cluster --name eks-localstack 2>/dev/null || true
