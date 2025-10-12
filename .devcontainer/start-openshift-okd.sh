@@ -195,6 +195,258 @@ spec:
             type: object
 EOF
 
+# Install OpenShift DeploymentConfig CRD
+echo "📦 Installing OpenShift DeploymentConfig CRD..."
+kubectl apply -f - <<EOF
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: deploymentconfigs.apps.openshift.io
+spec:
+  group: apps.openshift.io
+  names:
+    kind: DeploymentConfig
+    listKind: DeploymentConfigList
+    plural: deploymentconfigs
+    singular: deploymentconfig
+    shortNames:
+    - dc
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              replicas:
+                type: integer
+              selector:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              template:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              triggers:
+                type: array
+                items:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+              strategy:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+      scale:
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
+EOF
+
+# Install OpenShift ImageStream CRD
+echo "📦 Installing OpenShift ImageStream CRD..."
+kubectl apply -f - <<EOF
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: imagestreams.image.openshift.io
+spec:
+  group: image.openshift.io
+  names:
+    kind: ImageStream
+    listKind: ImageStreamList
+    plural: imagestreams
+    singular: imagestream
+    shortNames:
+    - is
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              lookupPolicy:
+                type: object
+                properties:
+                  local:
+                    type: boolean
+              tags:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    from:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                        name:
+                          type: string
+                    importPolicy:
+                      type: object
+                      properties:
+                        scheduled:
+                          type: boolean
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+EOF
+
+# Install OpenShift SecurityContextConstraints CRD
+echo "📦 Installing OpenShift SecurityContextConstraints CRD..."
+kubectl apply -f - <<EOF
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: securitycontextconstraints.security.openshift.io
+spec:
+  group: security.openshift.io
+  names:
+    kind: SecurityContextConstraints
+    listKind: SecurityContextConstraintsList
+    plural: securitycontextconstraints
+    singular: securitycontextconstraints
+    shortNames:
+    - scc
+  scope: Cluster
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          allowHostDirVolumePlugin:
+            type: boolean
+          allowHostIPC:
+            type: boolean
+          allowHostNetwork:
+            type: boolean
+          allowHostPID:
+            type: boolean
+          allowHostPorts:
+            type: boolean
+          allowPrivilegedContainer:
+            type: boolean
+          allowPrivilegeEscalation:
+            type: boolean
+          allowedCapabilities:
+            type: array
+            items:
+              type: string
+          defaultAddCapabilities:
+            type: array
+            items:
+              type: string
+          requiredDropCapabilities:
+            type: array
+            items:
+              type: string
+          fsGroup:
+            type: object
+            properties:
+              type:
+                type: string
+          readOnlyRootFilesystem:
+            type: boolean
+          runAsUser:
+            type: object
+            properties:
+              type:
+                type: string
+              uidRangeMin:
+                type: integer
+              uidRangeMax:
+                type: integer
+          seLinuxContext:
+            type: object
+            properties:
+              type:
+                type: string
+          supplementalGroups:
+            type: object
+            properties:
+              type:
+                type: string
+          volumes:
+            type: array
+            items:
+              type: string
+          users:
+            type: array
+            items:
+              type: string
+          groups:
+            type: array
+            items:
+              type: string
+EOF
+
+# Install OpenShift Template CRD
+echo "📦 Installing OpenShift Template CRD..."
+kubectl apply -f - <<EOF
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: templates.template.openshift.io
+spec:
+  group: template.openshift.io
+  names:
+    kind: Template
+    listKind: TemplateList
+    plural: templates
+    singular: template
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          objects:
+            type: array
+            items:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+          parameters:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                displayName:
+                  type: string
+                description:
+                  type: string
+                value:
+                  type: string
+                required:
+                  type: boolean
+          labels:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+EOF
+
 echo ""
 echo "✅ OKD cluster created successfully"
 echo "   Context: kind-${OKD_CLUSTER}"
@@ -208,10 +460,113 @@ echo ""
 # Rename context to simple name
 kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
 
+# Install DeploymentConfig Controller
+echo "📦 Installing DeploymentConfig Controller..."
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dc-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dc-controller
+rules:
+- apiGroups: ["apps.openshift.io"]
+  resources: ["deploymentconfigs"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dc-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dc-controller
+subjects:
+- kind: ServiceAccount
+  name: dc-controller
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dc-controller
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dc-controller
+  template:
+    metadata:
+      labels:
+        app: dc-controller
+    spec:
+      serviceAccountName: dc-controller
+      containers:
+      - name: controller
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          #!/bin/bash
+          echo "Starting DeploymentConfig to Deployment controller..."
+          
+          while true; do
+            # Get all DeploymentConfigs
+            kubectl get dc --all-namespaces -o json | jq -r '.items[] | @json' | while read -r dc; do
+              namespace=\\\$(echo "\\\$dc" | jq -r '.metadata.namespace')
+              name=\\\$(echo "\\\$dc" | jq -r '.metadata.name')
+              
+              # Check if corresponding Deployment exists
+              if ! kubectl get deployment "\\\$name" -n "\\\$namespace" &>/dev/null; then
+                echo "Creating Deployment for DeploymentConfig \\\$namespace/\\\$name"
+                
+                # Extract spec from DC and create Deployment
+                echo "\\\$dc" | jq '{
+                  apiVersion: "apps/v1",
+                  kind: "Deployment",
+                  metadata: {
+                    name: .metadata.name,
+                    namespace: .metadata.namespace,
+                    labels: .metadata.labels,
+                    annotations: (.metadata.annotations + {"deploymentconfig.openshift.io/source": .metadata.name})
+                  },
+                  spec: {
+                    replicas: .spec.replicas,
+                    selector: {
+                      matchLabels: .spec.selector
+                    },
+                    template: .spec.template
+                  }
+                }' | kubectl apply -f -
+              fi
+            done
+            
+            sleep 10
+          done
+EOF
+
+echo ""
 echo "📚 OpenShift-compatible features:"
 echo "   • Operator Lifecycle Manager (OLM)"
 echo "   • OpenShift Routes CRD"
 echo "   • OpenShift Projects CRD"
+echo "   • OpenShift DeploymentConfig CRD + Controller"
+echo "   • OpenShift ImageStream CRD"
+echo "   • OpenShift SecurityContextConstraints CRD"
+echo "   • OpenShift Template CRD"
 echo "   • OpenShift Router"
 echo "   • Compatible with 'oc' CLI"
 echo ""

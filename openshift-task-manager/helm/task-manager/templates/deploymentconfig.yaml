@@ -1,4 +1,3 @@
-{{- if .Values.openshift.useDeploymentConfig }}
 apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
@@ -54,7 +53,6 @@ spec:
             runAsUser: 1001
   triggers:
     - type: ConfigChange
-    {{- if .Values.openshift.useImageStream }}
     - type: ImageChange
       imageChangeParams:
         automatic: true
@@ -63,7 +61,6 @@ spec:
         from:
           kind: ImageStreamTag
           name: {{ include "task-manager.fullname" . }}:{{ .Values.image.tag }}
-    {{- end }}
   strategy:
     type: Rolling
     rollingParams:
@@ -72,4 +69,3 @@ spec:
       timeoutSeconds: 600
       maxUnavailable: 25%
       maxSurge: 25%
-{{- end }}

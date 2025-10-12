@@ -38,21 +38,14 @@ autoscaling:
 # OpenShift-specific settings
 openshift:
   # Use DeploymentConfig instead of Deployment
-  useDeploymentConfig: false
+  useDeploymentConfig: true
   
   # Use ImageStream
-  useImageStream: false
-  
-  # Use BuildConfig for S2I
-  useBuildConfig: false
-  buildConfig:
-    sourceUrl: "https://github.com/example/task-manager.git"
-    sourceRef: "main"
-    strategy: "docker"
+  useImageStream: true
   
   # Custom SecurityContextConstraints
   scc:
-    enabled: false
+    enabled: true
     name: "task-manager-scc"
     allowPrivilegedContainer: false
     runAsUser:
@@ -75,7 +68,7 @@ openshift:
 
 # Template parameters for OpenShift Template
 template:
-  enabled: false
+  enabled: true
   parameters:
     - name: APP_NAME
       displayName: "Application Name"

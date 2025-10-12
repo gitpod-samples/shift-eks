@@ -222,7 +222,6 @@ HTML_TEMPLATE = """
                     <li>DeploymentConfig (instead of Deployment)</li>
                     <li>ImageStreams (for image management)</li>
                     <li>SecurityContextConstraints (custom SCC)</li>
-                    <li>BuildConfig (S2I builds)</li>
                     <li>Templates (resource provisioning)</li>
                 </ul>
             </div>
@@ -416,7 +415,6 @@ def health():
             'DeploymentConfig',
             'ImageStreams',
             'SecurityContextConstraints',
-            'BuildConfig',
             'Templates'
         ]
     })

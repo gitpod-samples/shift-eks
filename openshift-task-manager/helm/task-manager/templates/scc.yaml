@@ -1,4 +1,3 @@
-{{- if .Values.openshift.scc.enabled }}
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
@@ -35,4 +34,3 @@ volumes:
   {{- toYaml .Values.openshift.scc.volumes | nindent 2 }}
 users:
   - system:serviceaccount:{{ .Release.Namespace }}:{{ include "task-manager.fullname" . }}
-{{- end }}
