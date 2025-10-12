@@ -8,9 +8,9 @@ services:
       start: bash .devcontainer/start-eks-anywhere.sh
       ready: |
         docker ps --format '{{.Names}}' | grep -q "^eks-local-eks-a-cluster-control-plane$" || exit 1
-        export KUBECONFIG=/workspaces/shift-eks/.eks-clusters/eks-local/generated/eks-local.kind.kubeconfig
+        KUBECONFIG=/workspaces/shift-eks/.kube/eks-anywhere-config
         [ -f "$KUBECONFIG" ] || exit 1
-        kubectl --context eks-anywhere get nodes 2>/dev/null | grep -q "Ready"
+        kubectl --kubeconfig "$KUBECONFIG" --context eks-anywhere get nodes 2>/dev/null | grep -q "Ready"
       stop: bash .devcontainer/stop-eks-anywhere.sh
 
   eks-localstack:
@@ -32,5 +32,5 @@ services:
       - postEnvironmentStart
     commands:
       start: bash .devcontainer/start-openshift-okd.sh
-      ready: kubectl --context okd get nodes 2>/dev/null | grep -q "Ready"
+      ready: KUBECONFIG=/workspaces/shift-eks/.kube/okd-config kubectl --context okd get nodes 2>/dev/null | grep -q "Ready"
       stop: bash .devcontainer/stop-openshift-okd.sh

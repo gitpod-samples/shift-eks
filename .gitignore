@@ -9,3 +9,6 @@
 # Temporary binaries and validation scripts
 eksctl-anywhere
 validate-dockerfile.sh
+
+# EKS Anywhere CLI logs
+eksa-cli-logs

@@ -22,11 +22,20 @@ if kind get clusters 2>/dev/null | grep -q "^${OKD_CLUSTER}$"; then
         # Export kubeconfig to dedicated file
         mkdir -p /workspaces/shift-eks/.kube
         kind export kubeconfig --name "${OKD_CLUSTER}" --kubeconfig "$OKD_KUBECONFIG"
+        # Fix kubeconfig to use 127.0.0.1 instead of 0.0.0.0
+        KUBECONFIG="$OKD_KUBECONFIG" kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443
         # Rename context if needed
         if KUBECONFIG="$OKD_KUBECONFIG" kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
             KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
         fi
-        exit 0
+        # Continue to monitoring loop instead of exiting
+        echo ""
+        echo "🔄 Monitoring OKD cluster..."
+        while docker ps --format '{{.Names}}' | grep -q "^okd-local-control-plane$"; do
+            sleep 10
+        done
+        echo "❌ OKD cluster stopped"
+        exit 1
     else
         echo "🔄 Starting existing OKD cluster..."
         docker start "${OKD_CLUSTER}-control-plane"
@@ -34,11 +43,20 @@ if kind get clusters 2>/dev/null | grep -q "^${OKD_CLUSTER}$"; then
         # Export kubeconfig to dedicated file
         mkdir -p /workspaces/shift-eks/.kube
         kind export kubeconfig --name "${OKD_CLUSTER}" --kubeconfig "$OKD_KUBECONFIG"
+        # Fix kubeconfig to use 127.0.0.1 instead of 0.0.0.0
+        KUBECONFIG="$OKD_KUBECONFIG" kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443
         # Rename context if needed
         if KUBECONFIG="$OKD_KUBECONFIG" kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
             KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
         fi
-        exit 0
+        # Continue to monitoring loop instead of exiting
+        echo ""
+        echo "🔄 Monitoring OKD cluster..."
+        while docker ps --format '{{.Names}}' | grep -q "^okd-local-control-plane$"; do
+            sleep 10
+        done
+        echo "❌ OKD cluster stopped"
+        exit 1
     fi
 fi
 
@@ -470,7 +488,7 @@ KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}"
 
 # Install DeploymentConfig Controller
 echo "📦 Installing DeploymentConfig Controller..."
-kubectl apply -f - <<EOF
+KUBECONFIG="$OKD_KUBECONFIG" kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount
 metadata:

@@ -84,7 +84,8 @@ echo "   This will download images on first run..."
 echo ""
 
 # Start cluster creation in background and monitor progress
-eksctl anywhere create cluster -f "$CLUSTER_CONFIG" &
+# Unset KUBECONFIG to prevent eksctl from trying to mount multiple paths as Docker volumes
+env -u KUBECONFIG eksctl anywhere create cluster -f "$CLUSTER_CONFIG" &
 EKSCTL_PID=$!
 
 # Wait for bootstrap cluster to be created
