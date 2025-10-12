@@ -1,5 +1,6 @@
 .eks-clusters/
 .clusters/
+.kube/
 
 # Kubeconfig files
 *.kubeconfig

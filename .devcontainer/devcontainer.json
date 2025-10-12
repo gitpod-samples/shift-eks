@@ -16,5 +16,8 @@
 	],
 	"mounts": [
 		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-	]
+	],
+	"containerEnv": {
+		"KUBECONFIG": "/workspaces/shift-eks/.kube/okd-config:/workspaces/shift-eks/.kube/eks-anywhere-config:/workspaces/shift-eks/.kube/eks-localstack-config"
+	}
 }

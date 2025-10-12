@@ -10,6 +10,7 @@ EKS_CLUSTER_NAME="eks-localstack"
 AWS_REGION="us-east-1"
 CLUSTERS_DIR="/workspaces/shift-eks/.eks-clusters"
 KUBECONFIG_PATH="${CLUSTERS_DIR}/eks-localstack/kubeconfig"
+EKS_LOCALSTACK_KUBECONFIG="/workspaces/shift-eks/.kube/eks-localstack-config"
 
 # Check for LocalStack auth token
 if [ -z "$LOCALSTACK_AUTH_TOKEN" ]; then
@@ -148,18 +149,19 @@ fi
 # Extract kubeconfig from k3d inside LocalStack
 echo "🔧 Extracting kubeconfig from k3d cluster..."
 mkdir -p "${CLUSTERS_DIR}/eks-localstack"
+mkdir -p /workspaces/shift-eks/.kube
 docker exec ${LOCALSTACK_CONTAINER} /var/lib/localstack/lib/k3d/v5.8.3/k3d-linux-amd64 kubeconfig write eks-localstack -o - > "${KUBECONFIG_PATH}"
+
+# Copy to dedicated kubeconfig file
+cp "${KUBECONFIG_PATH}" "${EKS_LOCALSTACK_KUBECONFIG}"
 
 # Get the actual Kubernetes API endpoint
 K8S_ENDPOINT=$(awslocal eks describe-cluster --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION} --query 'cluster.endpoint' --output text)
 echo "   Kubernetes API: ${K8S_ENDPOINT}"
-echo "   Kubeconfig: ${KUBECONFIG_PATH}"
-
-# Set KUBECONFIG environment variable
-export KUBECONFIG="${KUBECONFIG_PATH}"
+echo "   Kubeconfig: ${EKS_LOCALSTACK_KUBECONFIG}"
 
 # Rename context to simple name
-KUBECONFIG="${KUBECONFIG_PATH}" kubectl config rename-context "k3d-eks-localstack" "eks-localstack" 2>/dev/null || true
+KUBECONFIG="${EKS_LOCALSTACK_KUBECONFIG}" kubectl config rename-context "k3d-eks-localstack" "eks-localstack" 2>/dev/null || true
 
 echo ""
 echo "✅ LocalStack EKS cluster ready"
@@ -168,7 +170,6 @@ echo "   Region: ${AWS_REGION}"
 echo "   Endpoint: http://localhost:4566"
 echo ""
 echo "🔍 Verify with:"
-echo "   export KUBECONFIG=${KUBECONFIG_PATH}"
 echo "   kubectl config use-context eks-localstack"
 echo "   kubectl get nodes"
 echo "   awslocal eks describe-cluster --name ${EKS_CLUSTER_NAME}"

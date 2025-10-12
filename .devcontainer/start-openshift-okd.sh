@@ -10,6 +10,7 @@ echo ""
 # This provides OpenShift API compatibility without requiring KVM
 
 OKD_CLUSTER="okd-local"
+OKD_KUBECONFIG="/workspaces/shift-eks/.kube/okd-config"
 
 # Check if cluster already exists
 if kind get clusters 2>/dev/null | grep -q "^${OKD_CLUSTER}$"; then
@@ -18,21 +19,25 @@ if kind get clusters 2>/dev/null | grep -q "^${OKD_CLUSTER}$"; then
     # Check if it's running
     if docker ps --format '{{.Names}}' | grep -q "${OKD_CLUSTER}-control-plane"; then
         echo "✅ OKD cluster is running"
+        # Export kubeconfig to dedicated file
+        mkdir -p /workspaces/shift-eks/.kube
+        kind export kubeconfig --name "${OKD_CLUSTER}" --kubeconfig "$OKD_KUBECONFIG"
         # Rename context if needed
-        if kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
-            kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
+        if KUBECONFIG="$OKD_KUBECONFIG" kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
+            KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
         fi
-        kubectl config use-context "okd" 2>/dev/null || true
         exit 0
     else
         echo "🔄 Starting existing OKD cluster..."
         docker start "${OKD_CLUSTER}-control-plane"
         sleep 10
+        # Export kubeconfig to dedicated file
+        mkdir -p /workspaces/shift-eks/.kube
+        kind export kubeconfig --name "${OKD_CLUSTER}" --kubeconfig "$OKD_KUBECONFIG"
         # Rename context if needed
-        if kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
-            kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
+        if KUBECONFIG="$OKD_KUBECONFIG" kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
+            KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
         fi
-        kubectl config use-context "okd" 2>/dev/null || true
         exit 0
     fi
 fi
@@ -457,8 +462,11 @@ echo "   kubectl get nodes"
 echo "   kubectl get pods -A"
 echo "   kubectl get crds | grep openshift"
 echo ""
+# Export kubeconfig to dedicated file
+mkdir -p /workspaces/shift-eks/.kube
+kind export kubeconfig --name "${OKD_CLUSTER}" --kubeconfig "$OKD_KUBECONFIG"
 # Rename context to simple name
-kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
+KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
 
 # Install DeploymentConfig Controller
 echo "📦 Installing DeploymentConfig Controller..."
