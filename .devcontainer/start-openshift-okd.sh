@@ -22,8 +22,10 @@ if kind get clusters 2>/dev/null | grep -q "^${OKD_CLUSTER}$"; then
         # Export kubeconfig to dedicated file
         mkdir -p /workspaces/shift-eks/.kube
         kind export kubeconfig --name "${OKD_CLUSTER}" --kubeconfig "$OKD_KUBECONFIG"
-        # Fix kubeconfig to use 127.0.0.1 instead of 0.0.0.0
-        KUBECONFIG="$OKD_KUBECONFIG" kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443
+        # Fix kubeconfig to use 127.0.0.1 instead of 0.0.0.0 for certificate validation
+        KUBECONFIG="$OKD_KUBECONFIG" kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443 --insecure-skip-tls-verify=false
+        # Also fix the default kubeconfig
+        kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443 --insecure-skip-tls-verify=false
         # Rename context if needed
         if KUBECONFIG="$OKD_KUBECONFIG" kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
             KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
@@ -43,8 +45,10 @@ if kind get clusters 2>/dev/null | grep -q "^${OKD_CLUSTER}$"; then
         # Export kubeconfig to dedicated file
         mkdir -p /workspaces/shift-eks/.kube
         kind export kubeconfig --name "${OKD_CLUSTER}" --kubeconfig "$OKD_KUBECONFIG"
-        # Fix kubeconfig to use 127.0.0.1 instead of 0.0.0.0
-        KUBECONFIG="$OKD_KUBECONFIG" kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443
+        # Fix kubeconfig to use 127.0.0.1 instead of 0.0.0.0 for certificate validation
+        KUBECONFIG="$OKD_KUBECONFIG" kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443 --insecure-skip-tls-verify=false
+        # Also fix the default kubeconfig
+        kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443 --insecure-skip-tls-verify=false
         # Rename context if needed
         if KUBECONFIG="$OKD_KUBECONFIG" kubectl config get-contexts -o name | grep -q "^kind-${OKD_CLUSTER}$"; then
             KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
@@ -91,17 +95,32 @@ echo ""
 echo "🔧 Configuring cluster access..."
 
 # Fix kubeconfig to use 127.0.0.1 instead of 0.0.0.0 for certificate validation
-kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443
+# This must happen immediately after cluster creation to avoid certificate errors
+kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443 --insecure-skip-tls-verify=false
 
 # Set context
 kubectl config use-context "kind-${OKD_CLUSTER}"
+
+# Wait for API server to be ready with correct endpoint
+echo "⏳ Waiting for API server to be ready..."
+for i in {1..30}; do
+    if kubectl get --raw /healthz &>/dev/null; then
+        echo "✅ API server is ready"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "❌ API server did not become ready in time"
+        exit 1
+    fi
+    sleep 2
+done
 
 echo "🔧 Installing OpenShift-compatible components..."
 
 # Install OLM (Operator Lifecycle Manager) - core OpenShift component
 echo "📦 Installing Operator Lifecycle Manager (OLM)..."
-kubectl apply --validate=false -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.25.0/crds.yaml || true
-kubectl apply --validate=false -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.25.0/olm.yaml || true
+kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.25.0/crds.yaml || true
+kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.25.0/olm.yaml || true
 
 # Wait for OLM to be ready
 echo "⏳ Waiting for OLM to be ready..."
@@ -483,6 +502,8 @@ echo ""
 # Export kubeconfig to dedicated file
 mkdir -p /workspaces/shift-eks/.kube
 kind export kubeconfig --name "${OKD_CLUSTER}" --kubeconfig "$OKD_KUBECONFIG"
+# Fix kubeconfig to use 127.0.0.1 instead of 0.0.0.0 for certificate validation
+KUBECONFIG="$OKD_KUBECONFIG" kubectl config set-cluster "kind-${OKD_CLUSTER}" --server=https://127.0.0.1:6443 --insecure-skip-tls-verify=false
 # Rename context to simple name
 KUBECONFIG="$OKD_KUBECONFIG" kubectl config rename-context "kind-${OKD_CLUSTER}" "okd" 2>/dev/null || true
 
